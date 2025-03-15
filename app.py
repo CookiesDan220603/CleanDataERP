@@ -43,7 +43,7 @@ def remove_accents(input_str):
 
 def remove_invisible_chars(s):
     """Loại bỏ các ký tự ẩn (invisible characters) khỏi chuỗi."""
-    return re.sub(r'[\u200B\u200C\u200D\uFEFF]', '', ',', s)
+    return re.sub(r'[\u200B\u200C\u200D\uFEFF]', '', s)
 
 def fix_domain(email):
 
