@@ -83,13 +83,14 @@ def clean_and_normalize_email(email, company_name):
     # Nếu không tìm được email hợp lệ, tạo email mới từ tên công ty
     clean_name = remove_accents(str(company_name).strip().replace(" ", "").lower())
     return f"{clean_name}@default.com"
+
 def clean_email_page():
     # --- Giao diện Streamlit ---
     st.title("Trang chỉnh sửa dữ liệu email !")
     st.write("Upload file Excel chứa dữ liệu liên hệ")
 
     # Upload file Excel
-    uploaded_file = st.file_uploader("Chọn file Excel", type=["xlsx"])
+    uploaded_file = st.file_uploader("Chọn file Excel", type=["xlsx"], key="clean_email_uploader")
     if uploaded_file is not None:
         try:
             df = pd.read_excel(uploaded_file, engine="openpyxl")
@@ -173,15 +174,62 @@ def clean_email_page():
                     file_name="FullData_Fixed.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
-def other_page():
-    st.title("Other Page")
-    st.write("Nội dung của trang khác sẽ được cập nhật sau.")
+def get_duplicate_groups(df, column_name):
+    """Lấy tất cả các nhóm có giá trị trùng lặp trong cột chỉ định."""
+    if column_name not in df.columns:
+        return pd.DataFrame()
+    return df[df.duplicated(subset=[column_name], keep=False)]
+
+def Check_data():
+    st.title("Kiểm tra Data")
+    uploaded_file = st.file_uploader("Chọn file Excel", type=["xlsx"], key="other_page_uploader")
+
+    if uploaded_file is not None:
+        try:
+            df_new = pd.read_excel(uploaded_file, engine="openpyxl")
+            st.session_state['data_fixed'] = df_new  # Lưu vào session
+            st.subheader("Dữ liệu mới đã tải lên")
+            st.dataframe(df_new, use_container_width=True)
+        except Exception as e:
+            st.error(f"Lỗi khi đọc file: {e}")
+            return  
+
+    if 'data_fixed' not in st.session_state:
+        st.warning("Chưa có dữ liệu! Vui lòng tải file.")
+        return
+    
+    df_new = st.session_state['data_fixed']
+    df_new = df_new.loc[:, ~df_new.columns.str.startswith("Unnamed")]
+    # Chọn cột để kiểm tra trùng lặp
+    selected_column = st.selectbox("Chọn cột để kiểm tra trùng lặp:", df_new.columns, key="selected_column")
+
+    # Kiểm tra trùng lặp & lưu kết quả vào session_state
+    if st.button("Kiểm tra trùng lặp"):
+        st.session_state['duplicate_df'] = get_duplicate_groups(df_new, selected_column)
+
+    # Hiển thị kết quả nếu có
+    if 'duplicate_df' in st.session_state and not st.session_state['duplicate_df'].empty:
+        duplicate_df = st.session_state['duplicate_df']
+        st.subheader(f"Dữ liệu trùng lặp trong cột '{selected_column}'")
+        st.dataframe(duplicate_df, use_container_width=True)
+
+        # Chọn giá trị cụ thể để lọc
+        unique_values = duplicate_df[selected_column].dropna().astype(str).unique()
+        selected_value = st.selectbox(f"Chọn giá trị trong '{selected_column}' để xem:", unique_values, key="selected_value")
+
+        # Lọc dữ liệu theo giá trị được chọn
+        filtered_df = duplicate_df[duplicate_df[selected_column].astype(str) == str(selected_value)]
+        st.subheader(f"Dữ liệu trùng có '{selected_column} = {selected_value}'")
+        st.dataframe(filtered_df, use_container_width=True)
+    elif 'duplicate_df' in st.session_state:
+        st.success(f"Không có dữ liệu trùng lặp trong cột {selected_column}.")
+
 
 # --- Navigation Tabs ở đầu trang ---
-tabs = st.tabs(["Clean Email", "Other Page"])
+tabs = st.tabs(["Clean Email", "Check Data"])
 
 with tabs[0]:
     clean_email_page()
 
 with tabs[1]:
-    other_page()
+    Check_data()
