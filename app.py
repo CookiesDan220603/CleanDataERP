@@ -108,7 +108,7 @@ def clean_email_page():
             # Tách dữ liệu: các dòng có email  hợp lệ (df_valid)
             df_valid = df[df["Email"].apply(is_valid_email)].copy()
             st.subheader("Các Email  hợp lệ ban đầu (df_valid)")
-            st.dataframe(df_valid[["email_original", "Email"]])
+            st.dataframe(df_valid)
             st.write("Số lượng Email  hợp lệ:", df_valid.shape[0])
             # Tách dữ liệu: các dòng có email không hợp lệ (df_invalid)
             df_invalid = df[~df["Email"].apply(is_valid_email)].copy()
