@@ -226,62 +226,80 @@ def Check_data():
         st.success(f"Không có dữ liệu trùng lặp trong cột {selected_column}.")
 
 def check_duplicate():
-    st.title("Kiểm tra trùng data")
-    uploaded_file = st.file_uploader("Chọn file Excel", type=["xlsx"], key="check_duplicate_uploader")
+    st.title("🔍 Kiểm tra Trùng Dữ Liệu")
+    
+    uploaded_file = st.file_uploader("📂 Chọn file Excel", type=["xlsx"], key="check_duplicate_uploader")
 
     if uploaded_file is not None:
         try:
             df_new = pd.read_excel(uploaded_file, engine="openpyxl")
             st.session_state['data_fixed'] = df_new  # Lưu vào session
-            st.subheader("Dữ liệu mới đã tải lên")
+            
+            st.subheader("📊 Dữ liệu đã tải lên")
             st.dataframe(df_new, use_container_width=True)
-        
-            # Cho phép người dùng chọn các trường để kiểm tra trùng lặp
-            selected_columns = st.multiselect("Chọn các cột để kiểm tra trùng lặp:", df_new.columns, default=["Tên hiển thị", "Điện thoại"])
+
+            # Cho phép người dùng chọn các cột để kiểm tra trùng lặp
+            selected_columns = st.multiselect("🛠 Chọn cột kiểm tra trùng lặp:", df_new.columns, default=["Tên hiển thị", "Điện thoại"])
             
             if selected_columns:
-                # Tìm các bản ghi trùng lặp dựa trên các cột đã chọn
-                df_duplicates = df_new[df_new.duplicated(subset=selected_columns, keep=False)]
-                df_duplicates = df_duplicates.sort_values(by=selected_columns)
-                if df_duplicates.empty:
-                    st.warning("Không có dữ liệu trùng lặp")
-                else:
-                    st.write("### Dữ liệu Trùng Lặp:")
-                    st.dataframe(df_duplicates)
-                    st.write("Tổng số dòng dữ liệu trùng:", df_duplicates.shape[0])
+                df_duplicates = df_new[df_new.duplicated(subset=selected_columns, keep=False)].sort_values(by=selected_columns)
                 
-                    # Lọc ra các bản ghi trùng nhưng giữ email có đuôi '@gmail.com'
+                if df_duplicates.empty:
+                    st.success("✅ Không có dữ liệu trùng lặp.")
+                else:
+                    st.warning(f"⚠️ Tìm thấy {df_duplicates.shape[0]} dòng dữ liệu trùng lặp!")
+                    st.write("### 🔄 Dữ liệu Trùng Lặp:")
+                    st.dataframe(df_duplicates)
+
+                    # Lọc dữ liệu trùng, giữ lại email có đuôi '@gmail.com'
                     if "Email" in df_new.columns:
                         df_gmail = df_duplicates[df_duplicates["Email"].str.endswith("@gmail.com", na=False)]
                         df_gmail = df_gmail.drop_duplicates(subset=selected_columns, keep="first")
                     else:
                         df_gmail = df_duplicates.drop_duplicates(subset=selected_columns, keep="first")
-                    
-                    # Lấy các dòng không bị trùng để giữ nguyên
+
                     df_non_duplicates = df_new[~df_new.duplicated(subset=selected_columns, keep=False)]
-                    
-                    # Hợp nhất dữ liệu đã lọc
                     df_cleaned = pd.concat([df_non_duplicates, df_gmail])
-                    st.write("### Dữ liệu Sau Khi Làm Sạch:")
+
+                    st.success(f"✅ Dữ liệu sau khi làm sạch: {df_cleaned.shape[0]} dòng.")
+                    st.write("### ✨ Dữ liệu Sau Khi Làm Sạch:")
                     st.dataframe(df_cleaned)
-                    st.write("Tổng số dòng dữ liệu làm sạch:", df_cleaned.shape[0])
+
+                    # 🔹 Người dùng nhập số dòng mỗi file
+                    chunk_size = st.number_input("📌 Nhập số dòng cho mỗi file nhỏ:", min_value=100, value=8000, step=100)
                     
-                    # Xuất dữ liệu ra file Excel
-                    output = io.BytesIO()
-                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                        df_cleaned.to_excel(writer, index=False, sheet_name='Cleaned Data')
-                    output.seek(0)
-                    
-                    # Nút tải xuống dữ liệu
-                    st.download_button(
-                        label="📥 Tải xuống dữ liệu đã xử lý",
-                        data=output,
-                        file_name="cleaned_data.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    ) 
+                    # 🔹 Người dùng nhập tiền tố cho tên file
+                    prefix = st.text_input("📌 Nhập tiền tố cho file tải xuống:", value="DN_VT")
+
+                    # Khi nhấn nút, chia file thành nhiều phần nhỏ
+                    if st.button("✂️ Chia nhỏ và tải xuống"):
+                        zip_buffer = io.BytesIO()
+                        with pd.ExcelWriter(zip_buffer, engine="openpyxl") as writer:
+                            file_list = []
+                            for i, chunk in enumerate(range(0, df_cleaned.shape[0], chunk_size)):
+                                df_chunk = df_cleaned.iloc[chunk: chunk + chunk_size]
+                                file_name = f"{prefix}_{i+1}.xlsx"
+                                file_list.append(file_name)
+                                df_chunk.to_excel(writer, sheet_name=f"Part {i+1}", index=False)
+
+                        zip_buffer.seek(0)
+                        st.success("🎉 File đã sẵn sàng để tải xuống!")
+
+                        # Danh sách file sẽ được tạo
+                        st.write("📂 **Danh sách file sẽ tải xuống:**")
+                        for file in file_list:
+                            st.write(f"- {file}")
+
+                        # Nút tải xuống
+                        st.download_button(
+                            label="📥 Tải xuống dữ liệu đã xử lý",
+                            data=zip_buffer,
+                            file_name=f"{prefix}_cleaned_data.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        )
+
         except Exception as e:
-            st.error(f"Lỗi khi đọc file: {e}")
-            return 
+            st.error(f"❌ Lỗi khi đọc file: {e}")
 # --- Navigation Tabs ở đầu trang ---
 tabs = st.tabs(["Clean Email", "Check Data", "Check duplicate"])
 with tabs[0]:
