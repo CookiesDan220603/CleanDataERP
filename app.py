@@ -269,7 +269,7 @@ def check_duplicate():
                     chunk_size = st.number_input("📌 Nhập số dòng cho mỗi file nhỏ:", min_value=100, value=8000, step=100)
                     
                     # 🔹 Người dùng nhập tiền tố cho tên file
-                    prefix = st.text_input("📌 Nhập tiền tố cho file tải xuống:", value="DN_VT")
+                    prefix = st.text_input("📌 Nhập tiền tố cho file tải xuống:", value="Output_file")
 
                     # Khi nhấn nút, chia file thành nhiều phần nhỏ
                     if st.button("✂️ Chia nhỏ và tải xuống"):
