@@ -4,6 +4,7 @@ import re
 import unidecode
 import io
 import uuid
+import zipfile
 st.set_page_config(page_title="Email Data Cleaner", layout="wide")
 # Inject CSS để thay đổi màu nút download
 st.markdown("""
@@ -274,39 +275,33 @@ def check_duplicate():
                     st.write("### ✨ Dữ liệu Sau Khi Làm Sạch:")
                     st.dataframe(df_cleaned)
 
-                    # 🔹 Người dùng nhập số dòng mỗi file
+                   # 🔹 Nhập chunk size và prefix
                     chunk_size = st.number_input("📌 Nhập số dòng cho mỗi file nhỏ:", min_value=100, value=8000, step=100)
-                    
-                    # 🔹 Người dùng nhập tiền tố cho tên file
-                    prefix = st.text_input("📌 Nhập tiền tố cho file tải xuống:", value="Output_file")
+                    prefix = st.text_input("📌 Nhập tiền tố cho tên file:", value="Output_file")
 
-                    # Khi nhấn nút, chia file thành nhiều phần nhỏ
-                    if st.button("✂️ Chia nhỏ và tải xuống"):
+                    if st.button("📥 Tải tất cả file chia nhỏ"):
                         zip_buffer = io.BytesIO()
-                        with pd.ExcelWriter(zip_buffer, engine="openpyxl") as writer:
-                            file_list = []
-                            for i, chunk in enumerate(range(0, df_cleaned.shape[0], chunk_size)):
-                                df_chunk = df_cleaned.iloc[chunk: chunk + chunk_size]
+
+                        with zipfile.ZipFile(zip_buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as zip_file:
+                            for i, chunk_start in enumerate(range(0, df_cleaned.shape[0], chunk_size)):
+                                df_chunk = df_cleaned.iloc[chunk_start: chunk_start + chunk_size]
+                                excel_buffer = io.BytesIO()
+                                with pd.ExcelWriter(excel_buffer, engine="openpyxl") as writer:
+                                    df_chunk.to_excel(writer, index=False)
+                                excel_buffer.seek(0)
                                 file_name = f"{prefix}_{i+1}.xlsx"
-                                file_list.append(file_name)
-                                df_chunk.to_excel(writer, sheet_name=f"Part {i+1}", index=False)
+                                zip_file.writestr(file_name, excel_buffer.read())
 
                         zip_buffer.seek(0)
-                        st.success("🎉 File đã sẵn sàng để tải xuống!")
 
-                        # Danh sách file sẽ được tạo
-                        st.write("📂 **Danh sách file sẽ tải xuống:**")
-                        for file in file_list:
-                            st.write(f"- {file}")
-
-                        # Nút tải xuống
                         st.download_button(
-                            label="📥 Tải xuống dữ liệu đã xử lý",
+                            label="📦 Tải toàn bộ file chia nhỏ (.zip)",
                             data=zip_buffer,
-                            file_name=f"{prefix}_cleaned_data.xlsx",
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                            file_name=f"{prefix}_split_files.zip",
+                            mime="application/zip"
                         )
-
+        except Exception as e:
+            st.error(f"❌ Lỗi khi đọc file: {e}")
         except Exception as e:
             st.error(f"❌ Lỗi khi đọc file: {e}")
 # --- Navigation Tabs ở đầu trang ---
