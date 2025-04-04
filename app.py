@@ -239,7 +239,7 @@ def check_duplicate():
             st.dataframe(df_new, use_container_width=True)
 
             # Cho phép người dùng chọn các cột để kiểm tra trùng lặp
-            selected_columns = st.multiselect("🛠 Chọn cột kiểm tra trùng lặp:", df_new.columns, default=["Tên hiển thị", "Điện thoại"])
+            selected_columns = st.multiselect("🛠 Chọn cột kiểm tra trùng lặp:", df_new.columns)
             
             if selected_columns:
                 df_duplicates = df_new[df_new.duplicated(subset=selected_columns, keep=False)].sort_values(by=selected_columns)
