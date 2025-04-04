@@ -3,4 +3,3 @@ pandas
 unidecode
 openpyxl
 uuid
-zipfile
