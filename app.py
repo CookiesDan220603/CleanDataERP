@@ -233,7 +233,7 @@ def check_duplicate():
 
     if uploaded_file is not None:
         try:
-            df_new = pd.read_excel(uploaded_file, engine="openpyxl")
+            df_new = pd.read_excel(uploaded_file, engine="openpyxl", dtype={"Điện thoại": str})
             st.session_state['data_fixed'] = df_new  # Lưu vào session
             
             st.subheader("📊 Dữ liệu đã tải lên")
