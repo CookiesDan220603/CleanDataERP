@@ -250,7 +250,16 @@ def check_duplicate():
                     st.warning(f"⚠️ Tìm thấy {df_duplicates.shape[0]} dòng dữ liệu trùng lặp!")
                     st.write("### 🔄 Dữ liệu Trùng Lặp:")
                     st.dataframe(df_duplicates)
-
+                    # Nút download cho toàn bộ dữ liệu đã sửa
+                    find_duplicate = io.BytesIO()
+                    with pd.ExcelWriter(find_duplicate, engine="openpyxl") as writer:
+                        df_duplicates.to_excel(writer, index=False)
+                    st.download_button(
+                        label="Tải file toàn bộ dữ liệu trùng lặp",
+                        data=find_duplicate.getvalue(),
+                        file_name="duplicate_data.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
                     # Lọc dữ liệu trùng, giữ lại email có đuôi '@gmail.com'
                     if "Email" in df_new.columns:
                         df_gmail = df_duplicates[df_duplicates["Email"].str.endswith("@gmail.com", na=False)]
