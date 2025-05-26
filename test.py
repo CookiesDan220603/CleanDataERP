@@ -1,78 +1,62 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 from io import BytesIO
 
-st.title("🔄 Gộp thông tin theo khối trong DataFrame")
+def split_row_generic(row, columns):
+    values_split = {col: str(row[col]).split('\n') for col in columns}
+    max_len = max(len(v) for v in values_split.values())
+    rows = []
 
-# Upload file
-uploaded_file = st.file_uploader("📂 Tải lên file Excel hoặc CSV", type=["csv", "xlsx"])
+    for i in range(max_len):
+        new_row = row.copy()
+        for col in columns:
+            new_row[col] = values_split[col][i] if i < len(values_split[col]) else ''
+        rows.append(new_row)
+    return rows
 
-if uploaded_file:
-    # Đọc file
-    if uploaded_file.name.endswith(".csv"):
+def convert_df_to_excel(df):
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False)
+    processed_data = output.getvalue()
+    return processed_data
+
+st.title("Split Multi-line Cells into Multiple Rows")
+
+uploaded_file = st.file_uploader("Upload your Excel or CSV file", type=["xlsx", "csv"])
+
+if uploaded_file is not None:
+    if uploaded_file.name.endswith('.csv'):
         df = pd.read_csv(uploaded_file)
     else:
         df = pd.read_excel(uploaded_file)
 
-    st.subheader("📋 Xem trước dữ liệu")
-    st.dataframe(df.head(10))
+    st.subheader("Dữ liệu xem trước")
+    st.dataframe(df)
 
-    # Chọn cột X (bắt đầu block) và Y (gom dữ liệu)
-    x_col = st.selectbox("🧱 Chọn cột để xác định khối (X)", df.columns)
-    y_col = st.selectbox("📍 Chọn cột để gom thông tin (Y)", df.columns)
+    all_columns = df.columns.tolist()
+    cols_to_split = st.multiselect("Chọn các dòng có dữ liệu cần chia nhỏ", options=all_columns)
 
-    if st.button("🚀 Thực hiện gom dữ liệu"):
-        # Tìm chỉ số bắt đầu block
-        block_start_indices = df[df[x_col].notna()].index.tolist()
-        block_start_indices.append(len(df))  # Đảm bảo chặn cuối
+    if st.button("Chia nhỏ dòng"):
+        if not cols_to_split:
+            st.warning("Vui lòng chọn ít nhất 1 dòng để chạy")
+        else:
+            new_rows = []
+            for _, row in df.iterrows():
+                new_rows.extend(split_row_generic(row, cols_to_split))
 
-        rows_to_drop = set()
+            df_result = pd.DataFrame(new_rows)
+            df_result = df_result.replace({np.nan: '', 'nan': ''})
+            df_result.fillna('', inplace=True)
 
-        for i in range(len(block_start_indices) - 1):
-            start = block_start_indices[i]
-            end = block_start_indices[i + 1]
-            block = df.loc[start:end-1]
+            st.subheader("Kết quả sau khi chia nhỏ dữ liệu")
+            st.dataframe(df_result)
 
-            # Gom dữ liệu cột Y
-            values = (
-                block[y_col]
-                .dropna()
-                .astype(str)
-                .str.strip()
-                .loc[lambda x: x != '']
-                .unique()
-                .tolist()
+            excel_data = convert_df_to_excel(df_result)
+            st.download_button(
+                label="Download cleaned data",
+                data=excel_data,
+                file_name="split_result.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
-
-            value_string = ",".join(values)
-            df.at[start, y_col] = value_string
-
-            # Xoá các dòng chỉ có giá trị Y (có thể điều chỉnh logic này tùy bạn)
-            idx_range = df.index[(df.index > start) & (df.index < end)]
-            for j in idx_range:
-                if (
-                    pd.isna(df.at[j, x_col]) and
-                    df.at[j, y_col] in values and
-                    all(pd.isna(df.at[j, col]) for col in df.columns if col not in [y_col])
-                ):
-                    rows_to_drop.add(j)
-
-        df_result = df.drop(index=list(rows_to_drop)).reset_index(drop=True)
-
-        st.success("✅ Hoàn tất xử lý!")
-        st.dataframe(df_result.head(20))
-
-        # Xuất file
-        def convert_df(df):
-            output = BytesIO()
-            with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-                df.to_excel(writer, index=False, sheet_name="Sheet1")
-            return output.getvalue()
-
-        excel_bytes = convert_df(df_result)
-        st.download_button(
-            label="⬇️ Tải xuống kết quả",
-            data=excel_bytes,
-            file_name="ket_qua_gom.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
