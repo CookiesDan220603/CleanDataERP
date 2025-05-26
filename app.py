@@ -243,6 +243,9 @@ def check_duplicate():
             selected_columns = st.multiselect("🛠 Chọn cột kiểm tra trùng lặp:", df_new.columns)
 
             if selected_columns:
+                df_duplicates = df_new[df_new.duplicated(subset=selected_columns, keep=False)]
+                st.write("### 🔍 Dữ liệu Trùng Lặp:")
+                st.dataframe(df_duplicates)
                 st.markdown("### ✨ Chọn cách giữ dòng:")
                 method = st.radio(
                     "Cách xử lý dòng trùng:",
