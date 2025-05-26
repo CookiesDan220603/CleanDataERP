@@ -364,7 +364,7 @@ def merge_data():
             df_result = df.drop(index=list(rows_to_drop)).reset_index(drop=True)
 
             st.success("✅ Hoàn tất xử lý!")
-            st.dataframe(df_result.head(20))
+            st.dataframe(df_result)
 
             # Xuất file
             def convert_df(df):
