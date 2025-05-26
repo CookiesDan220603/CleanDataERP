@@ -243,7 +243,7 @@ def check_duplicate():
             st.dataframe(df_new, use_container_width=True)
 
             selected_columns = st.multiselect("🛠 Chọn cột kiểm tra trùng lặp:", df_new.columns)
-            sort_duplicates = st.checkbox("🔃 Sắp xếp dữ liệu trùng lặp lại gần nhau", value=True)
+            sort_duplicates = st.checkbox("🔃 Sắp xếp dữ liệu trùng lặp lại gần nhau", value=False)
 
             if selected_columns:
                 df_base = df_new.sort_values(by=selected_columns).reset_index(drop=True) if sort_duplicates else df_new
