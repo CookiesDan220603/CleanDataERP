@@ -238,7 +238,7 @@ def check_duplicate():
             st.session_state['data_fixed'] = df_new
 
             st.subheader("📊 Dữ liệu đã tải lên")
-            df_new = df_new.loc[:, ~df_new.columns.str.contains("uname", case=False, na=False)]
+            df_new = df_new.loc[:, ~df_new.columns.str.startswith("Unnamed")]
 
             st.dataframe(df_new, use_container_width=True)
 
