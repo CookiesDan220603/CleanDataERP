@@ -265,18 +265,22 @@ def check_duplicate():
 
                 elif method == "So sánh theo cột cụ thể":
                     compare_column = st.selectbox("📊 Chọn cột để so sánh:", df_new.columns)
-                    compare_type = st.radio("Giữ dòng có giá trị:", ["Lớn nhất", "Nhỏ nhất"], horizontal=True)
 
-                    if compare_column and compare_type:
+                    if compare_column:
                         try:
-                            df_new[compare_column] = pd.to_numeric(df_new[compare_column], errors='coerce')
+                            # Ép kiểu về số nguyên, giá trị không chuyển được thành NaN
+                            df_new[compare_column] = pd.to_numeric(df_new[compare_column], errors='coerce').astype('Int64')
 
-                            if compare_type == "Lớn nhất":
-                                df_cleaned = df_new.loc[df_new.groupby(selected_columns)[compare_column].idxmax()]
-                            else:
-                                df_cleaned = df_new.loc[df_new.groupby(selected_columns)[compare_column].idxmin()]
-                        except:
-                            st.error("❌ Không thể so sánh giá trị trong cột được chọn. Đảm bảo cột là số.")
+                            # Loại bỏ dòng có NaN trong cột so sánh trước khi nhóm
+                            df_valid = df_new.dropna(subset=[compare_column])
+
+                            # Giữ dòng có giá trị lớn nhất trong nhóm trùng
+                            df_cleaned = df_valid.loc[df_valid.groupby(selected_columns)[compare_column].idxmax()]
+
+                            st.success(f"✅ Đã giữ lại các dòng có {compare_column} lớn nhất theo nhóm {selected_columns}")
+                        except Exception as e:
+                            st.error(f"❌ Không thể xử lý cột '{compare_column}': {e}")
+
 
                 st.success(f"✅ Dữ liệu sau khi làm sạch: {df_cleaned.shape[0]} dòng.")
                 st.dataframe(df_cleaned)
