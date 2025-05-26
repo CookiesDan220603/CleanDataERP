@@ -265,21 +265,26 @@ def check_duplicate():
 
                 elif method == "So sánh theo cột cụ thể":
                     compare_column = st.selectbox("📊 Chọn cột để so sánh:", df_new.columns)
+                    compare_type = st.radio("🧮 Giữ dòng có giá trị:", ["Lớn nhất", "Nhỏ nhất"], horizontal=True)
 
-                    if compare_column:
+                    if compare_column and compare_type:
                         try:
-                            # Ép kiểu về số nguyên, giá trị không chuyển được thành NaN
-                            df_new[compare_column] = pd.to_numeric(df_new[compare_column], errors='coerce').astype('Int64')
+                            # Ép kiểu cột về số (Int64 cho phép NaN)
+                            df_new[compare_column] = pd.to_numeric(df_new[compare_column], errors='coerce').astype("Int64")
 
-                            # Loại bỏ dòng có NaN trong cột so sánh trước khi nhóm
+                            # Bỏ các dòng không thể so sánh
                             df_valid = df_new.dropna(subset=[compare_column])
 
-                            # Giữ dòng có giá trị lớn nhất trong nhóm trùng
-                            df_cleaned = df_valid.loc[df_valid.groupby(selected_columns)[compare_column].idxmax()]
+                            # Lọc giữ dòng có giá trị lớn nhất hoặc nhỏ nhất theo nhóm
+                            if compare_type == "Lớn nhất":
+                                df_cleaned = df_valid.loc[df_valid.groupby(selected_columns)[compare_column].idxmax()]
+                            else:
+                                df_cleaned = df_valid.loc[df_valid.groupby(selected_columns)[compare_column].idxmin()]
 
-                            st.success(f"✅ Đã giữ lại các dòng có {compare_column} lớn nhất theo nhóm {selected_columns}")
+                            st.success(f"✅ Đã giữ lại các dòng có {compare_column} {compare_type.lower()} theo nhóm {selected_columns}")
+                            st.dataframe(df_cleaned)
                         except Exception as e:
-                            st.error(f"❌ Không thể xử lý cột '{compare_column}': {e}")
+                            st.error(f"❌ Lỗi: Không thể xử lý cột '{compare_column}': {e}")
 
 
                 st.success(f"✅ Dữ liệu sau khi làm sạch: {df_cleaned.shape[0]} dòng.")
