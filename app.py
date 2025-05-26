@@ -241,14 +241,15 @@ def check_duplicate():
             st.dataframe(df_new, use_container_width=True)
 
             selected_columns = st.multiselect("🛠 Chọn cột kiểm tra trùng lặp:", df_new.columns)
+            sort_duplicates = st.checkbox("🔃 Sắp xếp dữ liệu trùng lặp lại gần nhau", value=True)
 
             if selected_columns:
-                df_sorted = df_new.sort_values(by=selected_columns).reset_index(drop=True)
+                df_base = df_new.sort_values(by=selected_columns).reset_index(drop=True) if sort_duplicates else df_new
 
-                # Tìm các dòng trùng lặp (giữ tất cả)
-                df_duplicates = df_sorted[df_sorted.duplicated(subset=selected_columns, keep=False)]
+                # Tìm các dòng trùng lặp (giữ tất cả trùng)
+                df_duplicates = df_base[df_base.duplicated(subset=selected_columns, keep=False)]
 
-                st.write("### 🔍 Dữ liệu Trùng Lặp:")
+                st.write("### 🔍 Dữ liệu Trùng Lặp" + (" (Đã sắp xếp)" if sort_duplicates else ""))
                 st.dataframe(df_duplicates)
                 st.markdown("### ✨ Chọn cách giữ dòng:")
                 method = st.radio(
