@@ -238,6 +238,8 @@ def check_duplicate():
             st.session_state['data_fixed'] = df_new
 
             st.subheader("📊 Dữ liệu đã tải lên")
+            df_new = df_new.loc[:, ~df_new.columns.str.contains("uname", case=False, na=False)]
+
             st.dataframe(df_new, use_container_width=True)
 
             selected_columns = st.multiselect("🛠 Chọn cột kiểm tra trùng lặp:", df_new.columns)
