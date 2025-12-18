@@ -459,10 +459,156 @@ def split_data():
                 )
 
 
-
+def FillData():
+    st.title("📝 Điền Dữ Liệu từ File B sang File A")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("📂 File A (Cần điền dữ liệu)")
+        file_a = st.file_uploader("Tải lên File A", type=["xlsx", "csv"], key="file_a_uploader")
+    
+    with col2:
+        st.subheader("📂 File B (Nguồn dữ liệu)")
+        file_b = st.file_uploader("Tải lên File B", type=["xlsx", "csv"], key="file_b_uploader")
+    
+    if file_a is not None and file_b is not None:
+        try:
+            # Đọc file A
+            if file_a.name.endswith('.csv'):
+                df_a = pd.read_csv(file_a)
+            else:
+                df_a = pd.read_excel(file_a, engine="openpyxl")
+            
+            # Đọc file B
+            if file_b.name.endswith('.csv'):
+                df_b = pd.read_csv(file_b)
+            else:
+                df_b = pd.read_excel(file_b, engine="openpyxl")
+            
+            # Loại bỏ cột Unnamed
+            df_a = df_a.loc[:, ~df_a.columns.str.startswith("Unnamed")]
+            df_b = df_b.loc[:, ~df_b.columns.str.startswith("Unnamed")]
+            
+            # Hiển thị preview
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.write("**Xem trước File A:**")
+                st.dataframe(df_a.head(5))
+                st.write(f"Tổng số dòng: {df_a.shape[0]}")
+            
+            with col2:
+                st.write("**Xem trước File B:**")
+                st.dataframe(df_b.head(5))
+                st.write(f"Tổng số dòng: {df_b.shape[0]}")
+            
+            st.markdown("---")
+            
+            # Chọn cột kiểm tra chung
+            st.subheader("🔍 Bước 1: Chọn cột để kiểm tra trùng khớp")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                check_col_a = st.selectbox(
+                    "Cột kiểm tra ở File A:",
+                    df_a.columns.tolist(),
+                    key="check_col_a"
+                )
+            
+            with col2:
+                check_col_b = st.selectbox(
+                    "Cột kiểm tra ở File B:",
+                    df_b.columns.tolist(),
+                    key="check_col_b"
+                )
+            
+            # Chọn cột nguồn và đích
+            st.subheader("📋 Bước 2: Chọn cột nguồn và cột đích")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                source_col_b = st.selectbox(
+                    "Cột lấy dữ liệu từ File B:",
+                    df_b.columns.tolist(),
+                    key="source_col_b"
+                )
+            
+            with col2:
+                target_col_a = st.selectbox(
+                    "Cột cần điền ở File A:",
+                    df_a.columns.tolist(),
+                    key="target_col_a"
+                )
+            
+            # Tùy chọn xử lý
+            st.subheader("⚙️ Bước 3: Tùy chọn xử lý")
+            overwrite = st.checkbox(
+                "Ghi đè dữ liệu đã có trong File A",
+                value=False,
+                help="Nếu bỏ chọn, chỉ điền vào các ô trống"
+            )
+            
+            # Nút thực hiện
+            if st.button("🚀 Thực hiện điền dữ liệu", type="primary"):
+                # Tạo bản copy để xử lý
+                df_result = df_a.copy()
+                
+                # Tạo dictionary mapping từ File B
+                mapping_dict = df_b.set_index(check_col_b)[source_col_b].to_dict()
+                
+                # Đếm số dòng được điền
+                filled_count = 0
+                
+                # Điền dữ liệu
+                for idx, row in df_result.iterrows():
+                    check_value = row[check_col_a]
+                    
+                    # Kiểm tra xem giá trị có trong mapping không
+                    if check_value in mapping_dict:
+                        # Nếu overwrite=True hoặc ô đích đang trống
+                        if overwrite or pd.isna(row[target_col_a]) or str(row[target_col_a]).strip() == '':
+                            df_result.at[idx, target_col_a] = mapping_dict[check_value]
+                            filled_count += 1
+                
+                # Hiển thị kết quả
+                st.success(f"✅ Đã điền {filled_count} dòng dữ liệu thành công!")
+                
+                st.subheader("📊 Kết quả sau khi điền dữ liệu")
+                st.dataframe(df_result, use_container_width=True)
+                
+                # So sánh trước và sau
+                with st.expander("🔍 Xem chi tiết các dòng đã được điền"):
+                    comparison_cols = [check_col_a, target_col_a]
+                    df_compare = pd.DataFrame({
+                        f'{check_col_a}': df_result[check_col_a],
+                        f'{target_col_a} (Trước)': df_a[target_col_a],
+                        f'{target_col_a} (Sau)': df_result[target_col_a]
+                    })
+                    # Chỉ hiển thị các dòng có thay đổi
+                    df_changed = df_compare[df_a[target_col_a].astype(str) != df_result[target_col_a].astype(str)]
+                    st.dataframe(df_changed, use_container_width=True)
+                    st.write(f"Tổng số dòng có thay đổi: {len(df_changed)}")
+                
+                # Nút tải xuống
+                towrite = io.BytesIO()
+                with pd.ExcelWriter(towrite, engine="openpyxl") as writer:
+                    df_result.to_excel(writer, index=False, sheet_name="Result")
+                
+                st.download_button(
+                    label="📥 Tải xuống File kết quả",
+                    data=towrite.getvalue(),
+                    file_name="FileA_Filled.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+                
+        except Exception as e:
+            st.error(f"❌ Đã xảy ra lỗi: {e}")
+    else:
+        st.info("👆 Vui lòng tải lên cả 2 file Excel (File A và File B) để bắt đầu")
 
 # --- Navigation Tabs ở đầu trang ---
-tabs = st.tabs(["Clean Email", "Check Data", "Check duplicate","Merge Data","Split Data"])
+tabs = st.tabs(["Clean Email", "Check Data", "Check duplicate","Merge Data","Split Data", "Fill Data"])
 with tabs[0]:
     clean_email_page()
 
@@ -474,4 +620,6 @@ with tabs[3]:
     merge_data()
 with tabs[4]:
     split_data()
+with tabs[5]:
+    FillData()
     
